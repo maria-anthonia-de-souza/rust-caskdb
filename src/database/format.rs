@@ -1,11 +1,14 @@
 use std::io::Read;
-
-// use std::process::ExitCode;
 use bincode;
 use bincode::{Decode, Encode, config};
 use serde::{Deserialize, Serialize};
 
-// timestamp 4bytes + keysize 4bytes + valsize 4bytes
+// format module provides two functions which help us with serialisation of data.
+
+//     encode_kv - takes the key value pair and encodes them into bytes
+//     decode_kv - takes a bunch of bytes and decodes them into key value pairs
+
+
 pub const HEADER_SIZE: usize = 12;
 
 //KeyEntry lives in memory

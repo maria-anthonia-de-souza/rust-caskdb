@@ -4,6 +4,7 @@ use database::format::decode_header;
 
 
 fn main() {
+    
     let encoded = encode_header(10, 5, 5);
     println!("encoded length: {}", encoded.len());
 
