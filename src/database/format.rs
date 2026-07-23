@@ -16,7 +16,7 @@ pub const HEADER_SIZE: usize = 12;
 #[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyEntry {
     pub timestamp: u32,
-    pub position: u32,
+    pub position: u64,
     pub total_size: u32,
 }
 
@@ -26,6 +26,12 @@ struct Header {
     timestamp: u32,
     key_size: u32,
     val_size: u32,
+}
+
+#[derive(Debug)]
+pub enum FormatError {
+    Header(usize),
+    InvalidKey,
 }
 
 //returns data represented by growable list of bytes

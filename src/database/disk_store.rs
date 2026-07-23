@@ -28,8 +28,11 @@ use std::{
 };
 
 use dashmap::DashMap;
-
-use crate::database::format::{HEADER_SIZE, KeyEntry, decode_header, decode_kv, encode_kv};
+use super::DatabaseError;
+use crate::database::format::FormatError;
+use crate::database::{
+   format::{HEADER_SIZE, KeyEntry, decode_header, decode_kv, encode_kv},
+};
 use std::fs::OpenOptions;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -43,22 +46,84 @@ impl DiskStorage {
     /// Creates or opens a disk-backed key-value store.
     ///
     /// `file_name` may be a file in the current directory or a full path.
-    pub fn new<P: AsRef<Path>>(file_name: P) -> std::io::Result<Self> {
+    pub fn new<P: AsRef<Path>>(file_name: P) -> Result<Self, DatabaseError> {
         let file_path = file_name.as_ref().to_path_buf();
+
+        let mut keydir = DashMap::new();
+
+        if file_path.exists() {
+            Self::init_keydir(&file_path, &mut keydir)?;
+        }
         //open or create new db file
         let file = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
             .open(&file_path)?;
-     
+
         Ok(Self {
             file_path,
             file,
             keydir,
         })
     }
+
+   fn init_keydir(
+    file_path: &Path,
+    keydir: &mut DashMap<String, KeyEntry>,
+) -> Result<(), DatabaseError> {
+    let mut file = File::open(file_path)?;
+    let mut position = 0u64;
+    let mut header_buff = [0u8; HEADER_SIZE];
+
+    loop {
+        let bytes_read = file.read(&mut header_buff)?;
+
+        // Zero bytes means we reached the normal end of the file.
+        if bytes_read == 0 {
+            break;
+        }
+
+        // Some header bytes exist, but not enough for a complete header.
+        if bytes_read != HEADER_SIZE {
+            return Err(DatabaseError::Format(
+                FormatError::Header(bytes_read),
+            ));
+        }
+
+        let (timestamp, key_size, val_size) =
+            decode_header(&header_buff);
+
+        let total_size =
+            HEADER_SIZE as u32 + key_size + val_size;
+
+        let mut key_buff = vec![0u8; key_size as usize];
+        file.read_exact(&mut key_buff)?;
+
+        let key = String::from_utf8(key_buff)
+            .map_err(|_| {
+                DatabaseError::Format(
+                    FormatError::InvalidKey,
+                )
+            })?;
+
+        let key_entry = KeyEntry {
+            timestamp,
+            position,
+            total_size,
+        };
+
+        keydir.insert(key, key_entry);
+
+        // Move our tracked position to the next record.
+        position += total_size as u64;
+
+        // The header and key were read already, so skip the value.
+        file.seek(SeekFrom::Current(val_size as i64))?;
     }
+
+    Ok(())
+}
 
     /// Stores a key-value pair by appending a record to the database file.
     pub fn set(&mut self, key: &str, val: &str) -> std::io::Result<()> {
@@ -76,7 +141,7 @@ impl DiskStorage {
             key.to_string(),
             KeyEntry {
                 timestamp,
-                position: next_pos as u32,
+                position: next_pos,
                 total_size: total_size as u32,
             },
         );

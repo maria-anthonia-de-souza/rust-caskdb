@@ -1,5 +1,5 @@
 use rust_caskdb::database::disk_store::DiskStorage;
-
+use rust_caskdb::database::DatabaseError;
 use std::collections::HashMap;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -57,7 +57,7 @@ fn test_values() -> HashMap<&'static str, &'static str> {
 }
 
 #[test]
-fn test_get() -> io::Result<()> {
+fn test_get() ->  Result<(), DatabaseError> {
     let temp_file = TempStorageFile::new()?;
     let mut store = DiskStorage::new(temp_file.path())?;
 
@@ -72,7 +72,7 @@ fn test_get() -> io::Result<()> {
 }
 
 #[test]
-fn test_invalid_key() -> io::Result<()> {
+fn test_invalid_key() ->  Result<(), DatabaseError> {
     let temp_file = TempStorageFile::new()?;
     let mut store = DiskStorage::new(temp_file.path())?;
 
@@ -94,7 +94,7 @@ Your current Rust DiskStorage API does not implement equivalent indexing
 traits, so the direct Rust equivalent uses set and get.
 */
 #[test]
-fn test_store_api() -> io::Result<()> {
+fn test_store_api() ->  Result<(), DatabaseError> {
     let temp_file = TempStorageFile::new()?;
     let mut store = DiskStorage::new(temp_file.path())?;
 
@@ -109,7 +109,7 @@ fn test_store_api() -> io::Result<()> {
 }
 
 #[test]
-fn test_persistence() -> io::Result<()> {
+fn test_persistence() ->  Result<(), DatabaseError> {
     let temp_file = TempStorageFile::new()?;
     let tests = test_values();
 
@@ -147,7 +147,7 @@ fn test_persistence() -> io::Result<()> {
 }
 
 #[test]
-fn test_deletion() -> io::Result<()> {
+fn test_deletion() -> Result<(), DatabaseError> {
     let temp_file = TempStorageFile::new()?;
     let tests = test_values();
 
@@ -191,7 +191,7 @@ fn test_deletion() -> io::Result<()> {
 }
 
 #[test]
-fn test_get_existing_file() -> io::Result<()> {
+fn test_get_existing_file() -> Result<(), DatabaseError> {
     let temp_file = TempStorageFile::with_file_name("temp.db")?;
 
     {
